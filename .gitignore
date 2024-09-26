@@ -1,0 +1,7 @@
+*.bag
+.vscode/
+devel/
+logs/
+build/
+bin/
+lib/
