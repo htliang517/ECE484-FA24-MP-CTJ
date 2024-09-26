@@ -12,6 +12,8 @@ from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import Float32
 from skimage import morphology
 
+import matplotlib.pyplot as plt
+
 
 
 class lanenet_detector():
@@ -20,9 +22,10 @@ class lanenet_detector():
         self.bridge = CvBridge()
         # NOTE
         # Uncomment this line for lane detection of GEM car in Gazebo
-        self.sub_image = rospy.Subscriber('/gem/front_single_camera/front_single_camera/image_raw', Image, self.img_callback, queue_size=1)
+        # self.sub_image = rospy.Subscriber('/gem/front_single_camera/front_single_camera/image_raw', Image, self.img_callback, queue_size=1)
         # Uncomment this line for lane detection of videos in rosbag
-        # self.sub_image = rospy.Subscriber('camera/image_raw', Image, self.img_callback, queue_size=1)
+        self.sub_image = rospy.Subscriber('camera/image_raw', Image, self.img_callback, queue_size=1)
+
         self.pub_image = rospy.Publisher("lane_detection/annotate", Image, queue_size=1)
         self.pub_bird = rospy.Publisher("lane_detection/birdseye", Image, queue_size=1)
         self.left_line = Line(n=5)
@@ -40,6 +43,9 @@ class lanenet_detector():
             print(e)
 
         raw_img = cv_image.copy()
+
+
+        #####
         mask_image, bird_image = self.detection(raw_img)
 
         if mask_image is not None and bird_image is not None:
@@ -50,6 +56,29 @@ class lanenet_detector():
             # Publish image message in ROS
             self.pub_image.publish(out_img_msg)
             self.pub_bird.publish(out_bird_msg)
+        #####
+
+
+        ##### Test for each functoin
+        # # mask_image = self.gradient_thresh(raw_img)
+        # # bird_image = self.color_thresh(raw_img)
+        # mask_image = self.combinedBinaryImage(raw_img)
+        # mask_image = np.uint8(mask_image * 255)
+        # bird_image, M, Minv = self.perspective_transform(mask_image)
+        # bird_image = np.uint8(bird_image * 255)
+        # # _, bird_image = self.detection(raw_img)
+        # if mask_image is not None and bird_image is not None:
+        #     # Convert an OpenCV image into a ROS image message
+        #     # out_img_msg = self.bridge.cv2_to_imgmsg(mask_image, 'bgr8')
+        #     out_img_msg = self.bridge.cv2_to_imgmsg(mask_image, 'mono8')
+        #     # out_bird_msg = self.bridge.cv2_to_imgmsg(bird_image, 'bgr8')
+        #     out_bird_msg = self.bridge.cv2_to_imgmsg(bird_image, 'mono8')
+        #     # Publish image message in ROS
+        #     self.pub_image.publish(out_img_msg)
+        #     self.pub_bird.publish(out_bird_msg)
+        #####
+
+
 
 
     def gradient_thresh(self, img, thresh_min=25, thresh_max=100):
@@ -63,6 +92,18 @@ class lanenet_detector():
         #5. Convert each pixel to unint8, then apply threshold to get binary image
 
         ## TODO
+
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        blur = cv2.GaussianBlur(gray, (5,5),0)
+
+        sobel_x = cv2.Sobel(blur, cv2.CV_32F, 1, 0, ksize=3)
+        sobel_y = cv2.Sobel(blur, cv2.CV_32F, 0, 1, ksize=3)
+        sobel_x = cv2.convertScaleAbs(sobel_x)
+        sobel_y = cv2.convertScaleAbs(sobel_y)
+
+        grad = cv2.addWeighted(sobel_x, 0.5, sobel_y, 0.5, 0)
+
+        ret, binary_output = cv2.threshold(grad, 100, 255, cv2.THRESH_BINARY)
 
         ####
 
@@ -78,6 +119,20 @@ class lanenet_detector():
         #Hint: threshold on H to remove green grass
         ## TODO
 
+        HLS = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
+
+        # H(Hue):           0-180, 0-R-Y-G-90-B-P-R-180
+        # L(Lightness):     0-255, higher is white, lower is black
+        # S(Saturation):    0-255, higher is bright, lower is gray
+
+        # mask = cv2.inRange(HLS, (0, 0, 0), (70, 255, 255)) # sim
+        mask = cv2.inRange(HLS, (0, 200, 0), (180, 255, 150)) # rosbag
+
+        Masked = cv2.bitwise_and(HLS, HLS, mask= mask)
+        GRY = cv2.cvtColor(Masked, cv2.COLOR_BGR2GRAY)
+
+        ret, binary_output = cv2.threshold(GRY, 100, 255, cv2.THRESH_BINARY)
+
         ####
 
         return binary_output
@@ -92,6 +147,17 @@ class lanenet_detector():
         ## Here you can use as many methods as you want.
 
         ## TODO
+
+        SobelMono8 = self.gradient_thresh(img)
+        SobelMono8 = cv2.GaussianBlur(SobelMono8, (9,1),0)
+        _, SobelMono8 = cv2.threshold(SobelMono8, 100, 255, cv2.THRESH_BINARY)
+
+        ColorMono8 = self.color_thresh(img)
+        ColorMono8 = cv2.GaussianBlur(ColorMono8, (9,1),0)
+        _, ColorMono8 = cv2.threshold(ColorMono8, 100, 255, cv2.THRESH_BINARY)
+        
+        SobelOutput = SobelMono8 > 0
+        ColorOutput = ColorMono8 > 0
 
         ####
 
@@ -113,6 +179,27 @@ class lanenet_detector():
 
         ## TODO
 
+        img = np.uint8(img * 255)
+
+        rows, cols = img.shape
+        rows_b = rows
+        cols_b = cols
+
+        # sim
+        # src = np.float32([[cols/2 -63, rows/2 +29 ], [cols/2 +63, rows/2 +29],\
+        #                 [cols/2 -355, rows/2 +169], [cols/2 +355, rows/2 +169]])
+
+        # rosbag
+        src = np.float32([[cols/2 -95-55, rows/2 +45 ], [cols/2 +95-55, rows/2 +45],\
+                        [cols/2 -355-55, rows/2 +169], [cols/2 +355-55, rows/2 +169]])
+
+        dst = np.float32([[0, 0], [cols_b, 0], [0, rows_b], [cols_b, rows_b]])
+
+        M = cv2.getPerspectiveTransform(src, dst)
+        Minv = np.linalg.inv(M)
+
+        warped_img = cv2.warpPerspective(img, M, (cols_b, rows_b)) > 0
+
         ####
 
         return warped_img, M, Minv
@@ -132,7 +219,6 @@ class lanenet_detector():
             nonzeroy = ret['nonzeroy']
             left_lane_inds = ret['left_lane_inds']
             right_lane_inds = ret['right_lane_inds']
-
         else:
             # Fit lane with previous result
             if not self.detected:

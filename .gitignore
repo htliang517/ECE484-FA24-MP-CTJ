@@ -5,3 +5,5 @@ logs/
 build/
 bin/
 lib/
+__pycache__
+.catkin_workspace

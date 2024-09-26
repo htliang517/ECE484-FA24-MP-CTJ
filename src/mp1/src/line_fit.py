@@ -19,14 +19,14 @@ def line_fit(binary_warped):
 	out_img = (np.dstack((binary_warped, binary_warped, binary_warped))*255).astype('uint8')
 	# Find the peak of the left and right halves of the histogram
 	# These will be the starting point for the left and right lines
-	midpoint = int(histogram.shape[0]/2)
-	leftx_base = np.argmax(histogram[100:midpoint]) + 100
-	rightx_base = np.argmax(histogram[midpoint:-100]) + midpoint
+	midpoint = np.int_(histogram.shape[0]/2)
+	leftx_base = np.argmax(histogram[50:midpoint]) + 50
+	rightx_base = np.argmax(histogram[midpoint:-50]) + midpoint
 
 	# Choose the number of sliding windows
-	nwindows = 9
+	nwindows = 20
 	# Set height of windows
-	window_height = int(binary_warped.shape[0]/nwindows)
+	window_height = np.int_(binary_warped.shape[0]/nwindows)
 	# Identify the x and y positions of all nonzero pixels in the image
 	nonzero = binary_warped.nonzero()
 	nonzeroy = np.array(nonzero[0])
@@ -35,9 +35,9 @@ def line_fit(binary_warped):
 	leftx_current = leftx_base
 	rightx_current = rightx_base
 	# Set the width of the windows +/- margin
-	margin = 100
+	margin = 50
 	# Set minimum number of pixels found to recenter window
-	minpix = 50
+	minpix = 25
 	# Create empty lists to receive left and right lane pixel indices
 	left_lane_inds = []
 	right_lane_inds = []
@@ -45,26 +45,36 @@ def line_fit(binary_warped):
 	# Step through the windows one by one
 	for window in range(nwindows):
 		# Identify window boundaries in x and y (and right and left)
-		##TO DO
-
+		## TODO
+		left_p1 = [leftx_current-margin, binary_warped.shape[0]-window*window_height]
+		left_p2 = [leftx_current+margin, binary_warped.shape[0]-(window+2)*window_height]
+		right_p1 = [rightx_current-margin, binary_warped.shape[0]-window*window_height]
+		right_p2 = [rightx_current+margin, binary_warped.shape[0]-(window+2)*window_height]
 		####
 		# Draw the windows on the visualization image using cv2.rectangle()
-		##TO DO
-
+		## TODO
+#		img_win = cv2.rectangle(out_img, left_p1, left_p2, (255,0,0), 2)
+#		img_win = cv2.rectangle(img_win, right_p1, right_p2, (255,0,0), 2)
 		####
 		# Identify the nonzero pixels in x and y within the window
-		##TO DO
-
+		## TODO
+		left_nonzero = np.where((left_p1[0] <= nonzerox) & (nonzerox <= left_p2[0]) & 
+                                (left_p2[1] <= nonzeroy) & (nonzeroy <= left_p1[1]))
+		right_nonzero = np.where((right_p1[0] <= nonzerox) & (nonzerox <= right_p2[0]) & 
+                                 (right_p2[1] <= nonzeroy) & (nonzeroy <= right_p1[1]))
 		####
 		# Append these indices to the lists
-		##TO DO
-
+		## TODO
+		left_lane_inds.append(left_nonzero[0])
+		right_lane_inds.append(right_nonzero[0])
 		####
 		# If you found > minpix pixels, recenter next window on their mean position
-		##TO DO
-
+		## TODO
+		if len(nonzerox[left_nonzero]) > minpix:
+			leftx_current = int(np.mean(nonzerox[left_nonzero]))
+		if len(nonzerox[right_nonzero]) > minpix:
+			rightx_current = int(np.mean(nonzerox[right_nonzero]))
 		####
-		pass
 
 	# Concatenate the arrays of indices
 	left_lane_inds = np.concatenate(left_lane_inds)
@@ -81,8 +91,9 @@ def line_fit(binary_warped):
 	# the second order polynomial is unable to be sovled.
 	# Thus, it is unable to detect edges.
 	try:
-	##TODO
-
+	## TODO
+		left_fit = np.polyfit(lefty, leftx, deg=2)
+		right_fit = np.polyfit(righty, rightx, deg=2)
 	####
 	except TypeError:
 		print("Unable to detect lanes")
