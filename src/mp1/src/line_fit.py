@@ -22,7 +22,7 @@ def line_fit(binary_warped):
 	midpoint = np.int_(histogram.shape[0]/2)
 	leftx_base = np.argmax(histogram[50:midpoint]) + 50
 	rightx_base = np.argmax(histogram[midpoint:-50]) + midpoint
-
+		
 	# Choose the number of sliding windows
 	nwindows = 20
 	# Set height of windows
@@ -53,15 +53,15 @@ def line_fit(binary_warped):
 		####
 		# Draw the windows on the visualization image using cv2.rectangle()
 		## TODO
-#		img_win = cv2.rectangle(out_img, left_p1, left_p2, (255,0,0), 2)
-#		img_win = cv2.rectangle(img_win, right_p1, right_p2, (255,0,0), 2)
+		# 		img_win = cv2.rectangle(out_img, left_p1, left_p2, (255,0,0), 2)
+		# 		img_win = cv2.rectangle(img_win, right_p1, right_p2, (255,0,0), 2)
 		####
 		# Identify the nonzero pixels in x and y within the window
 		## TODO
 		left_nonzero = np.where((left_p1[0] <= nonzerox) & (nonzerox <= left_p2[0]) & 
-                                (left_p2[1] <= nonzeroy) & (nonzeroy <= left_p1[1]))
+								(left_p2[1] <= nonzeroy) & (nonzeroy <= left_p1[1]))
 		right_nonzero = np.where((right_p1[0] <= nonzerox) & (nonzerox <= right_p2[0]) & 
-                                 (right_p2[1] <= nonzeroy) & (nonzeroy <= right_p1[1]))
+								 (right_p2[1] <= nonzeroy) & (nonzeroy <= right_p1[1]))
 		####
 		# Append these indices to the lists
 		## TODO
@@ -85,13 +85,13 @@ def line_fit(binary_warped):
 	lefty = nonzeroy[left_lane_inds]
 	rightx = nonzerox[right_lane_inds]
 	righty = nonzeroy[right_lane_inds]
-
+	
 	# Fit a second order polynomial to each using np.polyfit()
 	# If there isn't a good fit, meaning any of leftx, lefty, rightx, and righty are empty,
 	# the second order polynomial is unable to be sovled.
 	# Thus, it is unable to detect edges.
 	try:
-	## TODO
+		## TODO
 		left_fit = np.polyfit(lefty, leftx, deg=2)
 		right_fit = np.polyfit(righty, rightx, deg=2)
 	####
@@ -99,16 +99,15 @@ def line_fit(binary_warped):
 		print("Unable to detect lanes")
 		return None
 
-
 	# Return a dict of relevant variables
 	ret = {}
-	ret['left_fit'] = left_fit
-	ret['right_fit'] = right_fit
-	ret['nonzerox'] = nonzerox
-	ret['nonzeroy'] = nonzeroy
-	ret['out_img'] = out_img
-	ret['left_lane_inds'] = left_lane_inds
-	ret['right_lane_inds'] = right_lane_inds
+	ret["left_fit"] = left_fit
+	ret["right_fit"] = right_fit
+	ret["nonzerox"] = nonzerox
+	ret["nonzeroy"] = nonzeroy
+	ret["out_img"] = out_img
+	ret["left_lane_inds"] = left_lane_inds
+	ret["right_lane_inds"] = right_lane_inds
 
 	return ret
 

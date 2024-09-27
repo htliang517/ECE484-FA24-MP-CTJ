@@ -14,7 +14,7 @@ def filter_gaussian(input_img):
     img = input_img.copy()
     # TO-DO
     # YOUR CODE HERE
-    # img = cv2.GaussianBlur(?)
+    img = cv2.GaussianBlur(input_img, (5,5), 0)
 
     # YOUR CODE ENDS HERE
     return img
@@ -23,7 +23,7 @@ def filter_median(input_img):
     img = input_img.copy()
     # TO-DO
     # YOUR CODE HERE
-    # img = cv2.medianBlur(?)
+    img = cv2.medianBlur(input_img, 5)
 
     # YOUR CODE ENDS HERE
     return img
