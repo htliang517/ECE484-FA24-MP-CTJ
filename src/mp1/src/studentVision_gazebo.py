@@ -15,6 +15,7 @@ from skimage import morphology
 import matplotlib.pyplot as plt
 
 
+
 class lanenet_detector():
     def __init__(self):
 
@@ -32,6 +33,7 @@ class lanenet_detector():
         self.detected = False
         self.hist = True
 
+
     def img_callback(self, data):
 
         try:
@@ -41,6 +43,7 @@ class lanenet_detector():
             print(e)
 
         raw_img = cv_image.copy()
+
 
         #####
         mask_image, bird_image = self.detection(raw_img)
@@ -54,6 +57,7 @@ class lanenet_detector():
             self.pub_image.publish(out_img_msg)
             self.pub_bird.publish(out_bird_msg)
         #####
+
 
         ##### Test for each functoin
         # # mask_image = self.gradient_thresh(raw_img)
@@ -74,15 +78,18 @@ class lanenet_detector():
         #     self.pub_bird.publish(out_bird_msg)
         #####
 
+
+
+
     def gradient_thresh(self, img, thresh_min=25, thresh_max=100):
         """
         Apply sobel edge detection on input image in x, y direction
         """
-        # 1. Convert the image to gray scale
-        # 2. Gaussian blur the image
-        # 3. Use cv2.Sobel() to find derievatives for both X and Y Axis
-        # 4. Use cv2.addWeighted() to combine the results
-        # 5. Convert each pixel to unint8, then apply threshold to get binary image
+        #1. Convert the image to gray scale
+        #2. Gaussian blur the image
+        #3. Use cv2.Sobel() to find derievatives for both X and Y Axis
+        #4. Use cv2.addWeighted() to combine the results
+        #5. Convert each pixel to unint8, then apply threshold to get binary image
 
         ## TODO
 
@@ -95,85 +102,103 @@ class lanenet_detector():
         sobel_y = cv2.convertScaleAbs(sobel_y)
 
         grad = cv2.addWeighted(sobel_x, 0.5, sobel_y, 0.5, 0)
-        # binary_output = grad
-        ret, binary_output = cv2.threshold(grad, 50, 255, cv2.THRESH_BINARY)
+
+        ret, binary_output = cv2.threshold(grad, 100, 255, cv2.THRESH_BINARY)
+
         ####
 
         return binary_output
+
 
     def color_thresh(self, img, thresh=(100, 255)):
         """
         Convert RGB to HSL and threshold to binary image using S channel
         """
-        # 1. Convert the image from RGB to HSL
-        # 2. Apply threshold on S channel to get binary image
-        # Hint: threshold on H to remove green grass
+        #1. Convert the image from RGB to HSL
+        #2. Apply threshold on S channel to get binary image
+        #Hint: threshold on H to remove green grass
         ## TODO
 
-        HLS = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
+        # HLS = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
 
-        # H(Hue):           0-180, 0-R-Y-G-90-B-P-R-180
-        # L(Lightness):     0-255, higher is white, lower is black
-        # S(Saturation):    0-255, higher is bright, lower is gray
+        # # H(Hue):           0-180, 0-R-Y-G-90-B-P-R-180
+        # # L(Lightness):     0-255, higher is white, lower is black
+        # # S(Saturation):    0-255, higher is bright, lower is gray
 
-        mask = cv2.inRange(HLS, (0, 0, 0), (70, 255, 255)) # sim
-        # mask = cv2.inRange(HLS, (0, 200, 0), (180, 255, 150)) # rosbag
+        # mask = cv2.inRange(HLS, (0, 0, 0), (70, 255, 255)) # sim
+        # # mask = cv2.inRange(HLS, (0, 200, 0), (180, 255, 150)) # rosbag
 
-        Masked = cv2.bitwise_and(HLS, HLS, mask= mask)
-        GRY = cv2.cvtColor(Masked, cv2.COLOR_BGR2GRAY)
-        # binary_output = GRY
-        ret, binary_output = cv2.threshold(GRY, 20, 255, cv2.THRESH_BINARY)
+        # Masked = cv2.bitwise_and(HLS, HLS, mask= mask)
+        # GRY = cv2.cvtColor(Masked, cv2.COLOR_BGR2GRAY)
+
+        # ret, binary_output = cv2.threshold(GRY, 100, 255, cv2.THRESH_BINARY)
+
+
+
+        #1. Convert RGB image to HLS color space
+        hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
+
+        h_thresh_y=(15, 35)
+
+        l_thresh_w=(180, 255)  # in case some white lanes are kinda gray (increase for lighter)
+
+        # extract  channels
+        H = hls[:, :, 0]
+        L = hls[:, :, 1]
+        S = hls[:, :, 2]
+
+        yellow_mask = cv2.inRange(H, h_thresh_y[0], h_thresh_y[1])
+
+        white_mask = cv2.inRange(L, l_thresh_w[0], l_thresh_w[1])
+
+        binary_output = cv2.bitwise_or(yellow_mask, white_mask)
+
         ####
 
         return binary_output
+
 
     def combinedBinaryImage(self, img):
         """
         Get combined binary image from color filter and sobel filter
         """
-        # 1. Apply sobel filter and color filter on input image
-        # 2. Combine the outputs
+        #1. Apply sobel filter and color filter on input image
+        #2. Combine the outputs
         ## Here you can use as many methods as you want.
 
         ## TODO
+
         SobelMono8 = self.gradient_thresh(img)
-        SobelMono8 = cv2.GaussianBlur(SobelMono8, (9, 1), 0)
-        _, SobelMono8 = cv2.threshold(SobelMono8, 50, 255, cv2.THRESH_BINARY)
-        # plt.imshow(SobelMono8)
-        # plt.title("Grad")
-        # plt.show()
+        # SobelMono8 = cv2.GaussianBlur(SobelMono8, (9,1),0)
+        # _, SobelMono8 = cv2.threshold(SobelMono8, 100, 255, cv2.THRESH_BINARY)
 
         ColorMono8 = self.color_thresh(img)
-        ColorMono8 = cv2.GaussianBlur(ColorMono8, (9,1),0)
-        _, ColorMono8 = cv2.threshold(ColorMono8, 50, 255, cv2.THRESH_BINARY)
-        # plt.imshow(ColorMono8)
-        # plt.title("Color")
-        # plt.show()
+        # ColorMono8 = cv2.GaussianBlur(ColorMono8, (9,1),0)
+        # _, ColorMono8 = cv2.threshold(ColorMono8, 100, 255, cv2.THRESH_BINARY)
+        
+        SobelOutput = SobelMono8 > 0
+        ColorOutput = ColorMono8 > 0
 
-        SobelOutput = (SobelMono8 > 0)
-        ColorOutput = (ColorMono8 > 0)
         ####
 
         binaryImage = np.zeros_like(SobelOutput)
-        binaryImage[(ColorOutput == 1) | (SobelOutput == 1)] = 1
-        # plt.imshow(binaryImage)
-        # plt.title("Combine")
-        # plt.show()
-
+        binaryImage[(ColorOutput==1)|(SobelOutput==1)] = 1
         # Remove noise from binary image
         binaryImage = morphology.remove_small_objects(binaryImage.astype('bool'),min_size=50,connectivity=2)
 
         return binaryImage
 
+
     def perspective_transform(self, img, verbose=False):
         """
         Get bird's eye view from input image
         """
-        # 1. Visually determine 4 source points and 4 destination points
-        # 2. Get M, the transform matrix, and Minv, the inverse using cv2.getPerspectiveTransform()
-        # 3. Generate warped image in bird view using cv2.warpPerspective()
+        #1. Visually determine 4 source points and 4 destination points
+        #2. Get M, the transform matrix, and Minv, the inverse using cv2.getPerspectiveTransform()
+        #3. Generate warped image in bird view using cv2.warpPerspective()
 
         ## TODO
+
         img = np.uint8(img * 255)
 
         rows, cols = img.shape
@@ -199,10 +224,12 @@ class lanenet_detector():
 
         return warped_img, M, Minv
 
+
     def detection(self, img):
 
         binary_img = self.combinedBinaryImage(img)
         img_birdeye, M, Minv = self.perspective_transform(binary_img)
+
         if not self.hist:
             # Fit lane without previous result
             ret = line_fit(img_birdeye)

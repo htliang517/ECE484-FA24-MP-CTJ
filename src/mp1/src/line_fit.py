@@ -19,14 +19,14 @@ def line_fit(binary_warped):
 	out_img = (np.dstack((binary_warped, binary_warped, binary_warped))*255).astype('uint8')
 	# Find the peak of the left and right halves of the histogram
 	# These will be the starting point for the left and right lines
-	midpoint = np.int_(histogram.shape[0]/2)
-	leftx_base = np.argmax(histogram[50:midpoint]) + 50
-	rightx_base = np.argmax(histogram[midpoint:-50]) + midpoint
-		
+	midpoint = int(histogram.shape[0]/2)
+	leftx_base = np.argmax(histogram[100:midpoint]) + 100
+	rightx_base = np.argmax(histogram[midpoint:-100]) + midpoint
+
 	# Choose the number of sliding windows
-	nwindows = 20
+	nwindows = 9
 	# Set height of windows
-	window_height = np.int_(binary_warped.shape[0]/nwindows)
+	window_height = int(binary_warped.shape[0]/nwindows)
 	# Identify the x and y positions of all nonzero pixels in the image
 	nonzero = binary_warped.nonzero()
 	nonzeroy = np.array(nonzero[0])
@@ -35,9 +35,9 @@ def line_fit(binary_warped):
 	leftx_current = leftx_base
 	rightx_current = rightx_base
 	# Set the width of the windows +/- margin
-	margin = 50
+	margin = 100
 	# Set minimum number of pixels found to recenter window
-	minpix = 25
+	minpix = 50
 	# Create empty lists to receive left and right lane pixel indices
 	left_lane_inds = []
 	right_lane_inds = []
@@ -45,36 +45,67 @@ def line_fit(binary_warped):
 	# Step through the windows one by one
 	for window in range(nwindows):
 		# Identify window boundaries in x and y (and right and left)
-		## TODO
-		left_p1 = [leftx_current-margin, binary_warped.shape[0]-window*window_height]
-		left_p2 = [leftx_current+margin, binary_warped.shape[0]-(window+2)*window_height]
-		right_p1 = [rightx_current-margin, binary_warped.shape[0]-window*window_height]
-		right_p2 = [rightx_current+margin, binary_warped.shape[0]-(window+2)*window_height]
+		##TO DO
+
+		### Detect direction: Upwards
+		y_top = binary_warped.shape[0] - window * window_height
+		y_bottom = binary_warped.shape[0] - (window + 1) * window_height
+
+		# ----- Left Half
+		leftX_L = leftx_current - margin
+		leftX_R = leftx_current + margin
+
+		# ----- Right Half
+		rightX_L = rightx_current - margin
+		rightX_R = rightx_current + margin
+
 		####
 		# Draw the windows on the visualization image using cv2.rectangle()
-		## TODO
-		# 		img_win = cv2.rectangle(out_img, left_p1, left_p2, (255,0,0), 2)
-		# 		img_win = cv2.rectangle(img_win, right_p1, right_p2, (255,0,0), 2)
+		##TO DO
+
+		# input: (Output Image, top left corner XY, bottom right corner XY, color, thickness)
+		# ----- Left Half
+		cv2.rectangle(out_img,(leftX_L,y_top), (leftX_R, y_bottom), (0,255,0), 3)
+		# ----- Right Half
+		cv2.rectangle(out_img,(rightX_L,y_top), (rightX_R, y_bottom), (255,0,0), 3)
+
 		####
 		# Identify the nonzero pixels in x and y within the window
-		## TODO
-		left_nonzero = np.where((left_p1[0] <= nonzerox) & (nonzerox <= left_p2[0]) & 
-								(left_p2[1] <= nonzeroy) & (nonzeroy <= left_p1[1]))
-		right_nonzero = np.where((right_p1[0] <= nonzerox) & (nonzerox <= right_p2[0]) & 
-								 (right_p2[1] <= nonzeroy) & (nonzeroy <= right_p1[1]))
+		##TO DO
+
+		# ----- Left Half
+		nonzeroL = ((nonzeroy >= y_bottom) & (nonzeroy < y_top) & (nonzerox >= leftX_L) & (nonzerox < leftX_R)).nonzero()[0]
+		# ----- Right Half
+		nonzeroR = ((nonzeroy >= y_bottom) & (nonzeroy < y_top) & (nonzerox >= rightX_L) & (nonzerox < rightX_R)).nonzero()[0]
 		####
 		# Append these indices to the lists
-		## TODO
-		left_lane_inds.append(left_nonzero[0])
-		right_lane_inds.append(right_nonzero[0])
+		##TO DO
+		
+		# ----- Left Half
+
+		###### left_lane_inds = left_lane_inds.append(nonzeroL)
+		left_lane_inds.append(nonzeroL)
+
+		# ----- Right Half
+
+		###### right_lane_inds = right_lane_inds.append(nonzeroR)
+		right_lane_inds.append(nonzeroR)
+
 		####
 		# If you found > minpix pixels, recenter next window on their mean position
-		## TODO
-		if len(nonzerox[left_nonzero]) > minpix:
-			leftx_current = int(np.mean(nonzerox[left_nonzero]))
-		if len(nonzerox[right_nonzero]) > minpix:
-			rightx_current = int(np.mean(nonzerox[right_nonzero]))
+		##TO DO
+		if len(nonzeroL) > minpix:
+
+			###### leftx_current = int(np.mean(nonzerox[left_lane_inds]))
+			leftx_current = int(np.mean(nonzerox[nonzeroL]))
+
+		if len(nonzeroR) > minpix:
+
+			###### rightx_current = int(np.mean(nonzerox[right_lane_inds]))
+			rightx_current = int(np.mean(nonzerox[nonzeroR]))
+
 		####
+		pass
 
 	# Concatenate the arrays of indices
 	left_lane_inds = np.concatenate(left_lane_inds)
@@ -85,29 +116,33 @@ def line_fit(binary_warped):
 	lefty = nonzeroy[left_lane_inds]
 	rightx = nonzerox[right_lane_inds]
 	righty = nonzeroy[right_lane_inds]
-	
+
 	# Fit a second order polynomial to each using np.polyfit()
 	# If there isn't a good fit, meaning any of leftx, lefty, rightx, and righty are empty,
 	# the second order polynomial is unable to be sovled.
 	# Thus, it is unable to detect edges.
 	try:
-		## TODO
-		left_fit = np.polyfit(lefty, leftx, deg=2)
-		right_fit = np.polyfit(righty, rightx, deg=2)
+	##TODO
+		# left_fit = np.polyfit(leftx, lefty, 2) # (x,y,deg)
+		# right_fit = np.polyfit(rightx, righty, 2)
+		left_fit = np.polyfit(lefty, leftx, 2) # (x,y,deg)
+		right_fit = np.polyfit(righty, rightx, 2)
+
 	####
 	except TypeError:
 		print("Unable to detect lanes")
 		return None
 
+
 	# Return a dict of relevant variables
 	ret = {}
-	ret["left_fit"] = left_fit
-	ret["right_fit"] = right_fit
-	ret["nonzerox"] = nonzerox
-	ret["nonzeroy"] = nonzeroy
-	ret["out_img"] = out_img
-	ret["left_lane_inds"] = left_lane_inds
-	ret["right_lane_inds"] = right_lane_inds
+	ret['left_fit'] = left_fit
+	ret['right_fit'] = right_fit
+	ret['nonzerox'] = nonzerox
+	ret['nonzeroy'] = nonzeroy
+	ret['out_img'] = out_img
+	ret['left_lane_inds'] = left_lane_inds
+	ret['right_lane_inds'] = right_lane_inds
 
 	return ret
 
@@ -226,8 +261,10 @@ def bird_fit(binary_warped, ret, save_file=None):
 	right_line_pts = np.hstack((right_line_window1, right_line_window2))
 
 	# Draw the lane onto the warped blank image
-	cv2.fillPoly(window_img, np.int_([left_line_pts]), (0,255, 0))
-	cv2.fillPoly(window_img, np.int_([right_line_pts]), (0,255, 0))
+	# cv2.fillPoly(window_img, np.int_([left_line_pts]), (0,255, 0))
+	cv2.fillPoly(window_img, np.int_([left_line_pts]), (0,255, 255))
+	# cv2.fillPoly(window_img, np.int_([right_line_pts]), (0,255, 0))
+	cv2.fillPoly(window_img, np.int_([right_line_pts]), (0,255, 255))
 	result = cv2.addWeighted(out_img, 1, window_img, 0.3, 0)
 
 	plt.imshow(result)
@@ -236,6 +273,7 @@ def bird_fit(binary_warped, ret, save_file=None):
 	plt.xlim(0, 1280)
 	plt.ylim(720, 0)
 
+########
 	# cv2.imshow('bird',result)
 	# cv2.imwrite('bird_from_cv2.png', result)
 
@@ -244,6 +282,11 @@ def bird_fit(binary_warped, ret, save_file=None):
 	# else:
 	# 	plt.savefig(save_file)
 	# plt.gcf().clear()
+########
+
+
+
+
 
 	return result
 

@@ -24,7 +24,9 @@ class lanenet_detector():
         # Uncomment this line for lane detection of GEM car in Gazebo
         # self.sub_image = rospy.Subscriber('/gem/front_single_camera/front_single_camera/image_raw', Image, self.img_callback, queue_size=1)
         # Uncomment this line for lane detection of videos in rosbag
-        self.sub_image = rospy.Subscriber('camera/image_raw', Image, self.img_callback, queue_size=1)
+        # self.sub_image = rospy.Subscriber('camera/image_raw', Image, self.img_callback, queue_size=1)
+
+        self.sub_image = rospy.Subscriber('/zed2/zed_node/rgb/image_rect_color', Image, self.img_callback, queue_size=1)
 
         self.pub_image = rospy.Publisher("lane_detection/annotate", Image, queue_size=1)
         self.pub_bird = rospy.Publisher("lane_detection/birdseye", Image, queue_size=1)
@@ -43,6 +45,10 @@ class lanenet_detector():
             print(e)
 
         raw_img = cv_image.copy()
+        
+        # cv2.imshow("test", cv_image)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
 
 
         #####
@@ -60,12 +66,12 @@ class lanenet_detector():
 
 
         ##### Test for each functoin
-        # mask_image = self.gradient_thresh(raw_img)
-        # bird_image = self.color_thresh(raw_img)
-        # # mask_image = self.combinedBinaryImage(raw_img)
-        # # mask_image = np.uint8(mask_image * 255)
-        # # bird_image, M, Minv = self.perspective_transform(mask_image)
-        # # bird_image = np.uint8(bird_image * 255)
+        # # mask_image = self.gradient_thresh(raw_img)
+        # # bird_image = self.color_thresh(raw_img)
+        # mask_image = self.combinedBinaryImage(raw_img)
+        # mask_image = np.uint8(mask_image * 255)
+        # bird_image, M, Minv = self.perspective_transform(mask_image)
+        # bird_image = np.uint8(bird_image * 255)
         # # _, bird_image = self.detection(raw_img)
         # if mask_image is not None and bird_image is not None:
         #     # Convert an OpenCV image into a ROS image message
@@ -94,21 +100,20 @@ class lanenet_detector():
         ## TODO
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (5,5),0)
+        blur = cv2.GaussianBlur(gray, (15,15),0)
 
         sobel_x = cv2.Sobel(blur, cv2.CV_32F, 1, 0, ksize=3)
-        sobel_y = cv2.Sobel(blur, cv2.CV_32F, 0, 1, ksize=3)
+        sobel_y = cv2.Sobel(blur, cv2.CV_32F, 0, 1, ksize=7)
         sobel_x = cv2.convertScaleAbs(sobel_x)
         sobel_y = cv2.convertScaleAbs(sobel_y)
 
         grad = cv2.addWeighted(sobel_x, 0.5, sobel_y, 0.5, 0)
 
-        ret, binary_output = cv2.threshold(grad, 100, 255, cv2.THRESH_BINARY)
+        ret, binary_output = cv2.threshold(grad, 130, 255, cv2.THRESH_BINARY)
 
         ####
 
         return binary_output
-
 
 
     def color_thresh(self, img, thresh=(100, 255)):
@@ -126,8 +131,7 @@ class lanenet_detector():
         # # L(Lightness):     0-255, higher is white, lower is black
         # # S(Saturation):    0-255, higher is bright, lower is gray
 
-        # # mask = cv2.inRange(HLS, (0, 0, 0), (70, 255, 255)) # sim
-        # mask = cv2.inRange(HLS, (0, 200, 0), (180, 255, 150)) # rosbag
+        # mask = cv2.inRange(HLS, (20, 0, 0), (70, 255, 255)) # rosbag
 
         # Masked = cv2.bitwise_and(HLS, HLS, mask= mask)
         # GRY = cv2.cvtColor(Masked, cv2.COLOR_BGR2GRAY)
@@ -159,7 +163,6 @@ class lanenet_detector():
         return binary_output
 
 
-
     def combinedBinaryImage(self, img):
         """
         Get combined binary image from color filter and sobel filter
@@ -171,12 +174,12 @@ class lanenet_detector():
         ## TODO
 
         SobelMono8 = self.gradient_thresh(img)
-        # SobelMono8 = cv2.GaussianBlur(SobelMono8, (9,1),0)
-        # _, SobelMono8 = cv2.threshold(SobelMono8, 100, 255, cv2.THRESH_BINARY)
+        SobelMono8 = cv2.GaussianBlur(SobelMono8, (9,1),0)
+        _, SobelMono8 = cv2.threshold(SobelMono8, 100, 255, cv2.THRESH_BINARY)
 
         ColorMono8 = self.color_thresh(img)
-        # ColorMono8 = cv2.GaussianBlur(ColorMono8, (9,1),0)
-        # _, ColorMono8 = cv2.threshold(ColorMono8, 100, 255, cv2.THRESH_BINARY)
+        ColorMono8 = cv2.GaussianBlur(ColorMono8, (9,1),0)
+        _, ColorMono8 = cv2.threshold(ColorMono8, 100, 255, cv2.THRESH_BINARY)
         
         SobelOutput = SobelMono8 > 0
         ColorOutput = ColorMono8 > 0
@@ -212,8 +215,14 @@ class lanenet_detector():
         #                 [cols/2 -355, rows/2 +169], [cols/2 +355, rows/2 +169]])
 
         # rosbag
-        src = np.float32([[cols/2 -95-55, rows/2 +45 ], [cols/2 +95-55, rows/2 +45],\
-                        [cols/2 -355-55, rows/2 +169], [cols/2 +355-55, rows/2 +169]])
+        # src = np.float32([[cols/2 -95-55, rows/2 +45 ], [cols/2 +95-55, rows/2 +45],\
+        #                 [cols/2 -355-55, rows/2 +169], [cols/2 +355-55, rows/2 +169]])
+
+        # src = np.float32([[cols/2 -145, rows/2 +45 ], [cols/2 +125, rows/2 +45],\
+        #                 [cols/2 -355, rows/2 +169], [cols/2 +355, rows/2 +169]])
+
+        src = np.float32([[503, 393], [739, 393], [20, 710], [1237, 710]])
+
 
         dst = np.float32([[0, 0], [cols_b, 0], [0, rows_b], [cols_b, rows_b]])
 

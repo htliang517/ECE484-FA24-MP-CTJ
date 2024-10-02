@@ -60,12 +60,12 @@ class lanenet_detector():
 
 
         ##### Test for each functoin
-        # mask_image = self.gradient_thresh(raw_img)
-        # bird_image = self.color_thresh(raw_img)
-        # # mask_image = self.combinedBinaryImage(raw_img)
-        # # mask_image = np.uint8(mask_image * 255)
-        # # bird_image, M, Minv = self.perspective_transform(mask_image)
-        # # bird_image = np.uint8(bird_image * 255)
+        # # mask_image = self.gradient_thresh(raw_img)
+        # # bird_image = self.color_thresh(raw_img)
+        # mask_image = self.combinedBinaryImage(raw_img)
+        # mask_image = np.uint8(mask_image * 255)
+        # bird_image, M, Minv = self.perspective_transform(mask_image)
+        # bird_image = np.uint8(bird_image * 255)
         # # _, bird_image = self.detection(raw_img)
         # if mask_image is not None and bird_image is not None:
         #     # Convert an OpenCV image into a ROS image message
@@ -103,7 +103,7 @@ class lanenet_detector():
 
         grad = cv2.addWeighted(sobel_x, 0.5, sobel_y, 0.5, 0)
 
-        ret, binary_output = cv2.threshold(grad, 100, 255, cv2.THRESH_BINARY)
+        ret, binary_output = cv2.threshold(grad, 30, 255, cv2.THRESH_BINARY)
 
         ####
 
@@ -137,13 +137,41 @@ class lanenet_detector():
 
 
         # 1. Convert RGB image to HLS color space
+        # hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
+
+        # h_thresh_y=(15, 35)
+
+        # l_thresh_w=(165, 255)  # in case some white lanes are kinda gray (increase for lighter)
+
+        # # extract  channels
+        # H = hls[:, :, 0]
+        # L = hls[:, :, 1]
+        # S = hls[:, :, 2]
+
+        # yellow_mask = cv2.inRange(H, h_thresh_y[0], h_thresh_y[1])
+
+        # white_mask = cv2.inRange(L, l_thresh_w[0], l_thresh_w[1])
+
+        # binary_output = cv2.bitwise_or(yellow_mask, white_mask)
+
+
+
         hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
 
+        # yellow
         h_thresh_y=(15, 35)
 
-        l_thresh_w=(165, 255)  # in case some white lanes are kinda gray (increase for lighter)
+        # white
+        l_thresh_w=(150, 255)  # in case some white lanes are kinda gray (increase for lighter)
 
-        # extract  channels
+        # light gray
+        light_gray_l_thresh = (150, 255)  # Lightness
+
+
+        # dark gray
+        dark_gray_l_thresh = (40, 140)
+
+
         H = hls[:, :, 0]
         L = hls[:, :, 1]
         S = hls[:, :, 2]
@@ -152,7 +180,18 @@ class lanenet_detector():
 
         white_mask = cv2.inRange(L, l_thresh_w[0], l_thresh_w[1])
 
-        binary_output = cv2.bitwise_or(yellow_mask, white_mask)
+        # light gray
+        light_gray_mask = cv2.inRange(L, light_gray_l_thresh[0], light_gray_l_thresh[1])
+
+        # dark gray
+        dark_gray_mask = cv2.inRange(L, dark_gray_l_thresh[0], dark_gray_l_thresh[1])
+
+        # Combine yellow, white, and dark gray masks
+        color_mask = cv2.bitwise_or(yellow_mask, white_mask)
+        color_mask = cv2.bitwise_or(color_mask, dark_gray_mask)
+
+        # Remove light gray
+        binary_output = cv2.bitwise_and(color_mask, cv2.bitwise_not(light_gray_mask))
 
         ####
 
@@ -212,8 +251,10 @@ class lanenet_detector():
         #                 [cols/2 -355, rows/2 +169], [cols/2 +355, rows/2 +169]])
 
         # rosbag
-        src = np.float32([[cols/2 -95-55, rows/2 +45 ], [cols/2 +95-55, rows/2 +45],\
-                        [cols/2 -355-55, rows/2 +169], [cols/2 +355-55, rows/2 +169]])
+        # src = np.float32([[cols/2 -95-55, rows/2 +45 ], [cols/2 +95-55, rows/2 +45],\
+                        # [cols/2 -355-55, rows/2 +169], [cols/2 +355-55, rows/2 +169]])
+
+        src = np.float32([[600, 280], [780, 280], [430, 368], [930, 368]])
 
         dst = np.float32([[0, 0], [cols_b, 0], [0, rows_b], [cols_b, rows_b]])
 
