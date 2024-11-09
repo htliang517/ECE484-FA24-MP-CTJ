@@ -3,7 +3,7 @@ import numpy as np
 import argparse
 
 from gazebo_msgs.msg import  ModelState
-from controller import vehicleController
+from controller_yudai import vehicleController
 import time
 from waypoint_list import WayPoints
 from util import euler_to_quaternion, quaternion_to_euler
